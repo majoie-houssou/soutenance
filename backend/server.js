@@ -82,21 +82,53 @@ app.get('/api/public/evacuation-points', async (req, res) => {
 });
 
 // ========== ROUTES POUR L'AUTORITÉ (GESTION DES SIGNALEMENTS) ==========
+// Route de test - Récupérer signalements SANS include
+app.get('/api/signalements-test', estAutorite, async (req, res) => {
+  try {
+    const signalements = await prisma.signalements.findMany({
+      orderBy: { date_creation: 'desc' }
+    });
+    console.log(`📋 ${signalements.length} signalements (test)`, signalements);
+    res.json({ count: signalements.length, data: signalements });
+  } catch (error) {
+    console.error('Erreur test:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Récupérer tous les signalements
 app.get('/api/signalements', estAutorite, async (req, res) => {
   try {
-    const signalements = await prisma.signalements.findMany({
-      orderBy: { date_creation: 'desc' },
-      include: {
-        citoyens: {
-          select: { nom: true, prenom: true, telephone: true }
+    console.log('📋 Requête /api/signalements reçue');
+    
+    const signalements = await prisma.signalements.findMany();
+    
+    console.log(`✅ ${signalements.length} signalements récupérés`);
+    
+    // Enrichir manuellement chaque signalement
+    const result = [];
+    for (const sig of signalements) {
+      let citoyenData = null;
+      if (sig.citoyen_id) {
+        try {
+          citoyenData = await prisma.citoyens.findUnique({
+            where: { id: sig.citoyen_id }
+          });
+        } catch (err) {
+          console.error('Erreur récupération citoyen:', err);
         }
       }
-    });
-    console.log(`📋 ${signalements.length} signalements envoyés à l'autorité`);
-    res.json(signalements);
+      result.push({
+        ...sig,
+        citoyens: citoyenData
+      });
+    }
+    
+    console.log(`📤 Envoi de ${result.length} signalements enrichis`);
+    res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('❌ Erreur /api/signalements:', error);
+    res.status(500).json({ error: error.message, stack: error.stack });
   }
 });
 
@@ -144,7 +176,9 @@ app.post('/api/public/inscription-signalement', async (req, res) => {
     // Créer le signalement
     const signalement = await prisma.signalements.create({
       data: {
-        citoyen_id: citoyen.id,
+        citoyens: {
+          connect: { id: citoyen.id }
+        },
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),
         niveau_eau,

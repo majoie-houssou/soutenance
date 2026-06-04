@@ -1,210 +1,386 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const ZONES = ['Littoral','Atlantique','Ouémé','Mono','Couffo','Zou','Collines','Borgou','Alibori','Atacora','Donga'];
+
+const MESSAGES_PREDEFINIS = {
+  info:      { icon:'ℹ️', label:'Info',      color:'#1a56db', bg:'#eff6ff', border:'#93c5fd', message:'⚠️ Vigilance météo - Fortes pluies attendues dans les prochaines heures. Restez informés via InondoBénin.' },
+  vigilance: { icon:'🟡', label:'Vigilance', color:'#ca8a04', bg:'#fefce8', border:'#fde047', message:"🟡 Vigilance orange - Risque modéré d'inondation dans votre zone. Préparez vos documents et chargez vos téléphones." },
+  alerte:    { icon:'🟠', label:'Alerte',    color:'#ea580c', bg:'#fff7ed', border:'#fdba74', message:"🟠 ALERTE ORANGE - Risque élevé d'inondation. Évacuez si vous êtes en zone basse. Tenez-vous prêts." },
+  urgence:   { icon:'🔴', label:'Urgence',   color:'#dc2626', bg:'#fef2f2', border:'#fca5a5', message:"🔴 ALERTE ROUGE - ÉVACUEZ IMMÉDIATEMENT ! L'eau monte rapidement. Rendez-vous au point de rassemblement le plus proche." },
+};
+
 const EnvoiAlertes = () => {
   const navigate = useNavigate();
-  const [message, setMessage] = useState('');
-  const [zone, setZone] = useState('Littoral');
+  const [message, setMessage]           = useState('');
+  const [zone, setZone]                 = useState('Tous');
   const [niveauUrgence, setNiveauUrgence] = useState('info');
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
-  const [abonnes, setAbonnes] = useState([]);
+  const [loading, setLoading]           = useState(false);
+  const [success, setSuccess]           = useState(false);
+  const [error, setError]               = useState('');
+  const [abonnes, setAbonnes]           = useState([]);
 
-  const zones = ['Littoral', 'Atlantique', 'Ouémé', 'Mono', 'Couffo', 'Zou', 'Collines', 'Borgou', 'Alibori', 'Atacora', 'Donga'];
-
-  const messagesPredefinis = {
-    info: { 
-      titre: 'ℹ️ Information', 
-      message: '⚠️ Vigilance météo - Fortes pluies attendues dans les prochaines heures. Restez informés via InondoBénin.', 
-      couleur: '#3b82f6' 
-    },
-    vigilance: { 
-      titre: '🟡 Vigilance renforcée', 
-      message: '🟡 Vigilance orange - Risque modéré d\'inondation dans votre zone. Préparez vos documents et chargez vos téléphones.', 
-      couleur: '#eab308' 
-    },
-    alerte: { 
-      titre: '🟠 Alerte orange', 
-      message: '🟠 ALERTE ORANGE - Risque élevé d\'inondation. Évacuez si vous êtes en zone basse. Tenez-vous prêts.', 
-      couleur: '#f97316' 
-    },
-    urgence: { 
-      titre: '🔴 URGENCE - Alerte rouge', 
-      message: '🔴 ALERTE ROUGE - ÉVACUEZ IMMÉDIATEMENT ! L\'eau monte rapidement. Rendez-vous au point de rassemblement le plus proche.', 
-      couleur: '#dc2626' 
-    }
-  };
-
-  useEffect(() => {
-    fetchAbonnes();
-  }, []);
+  useEffect(() => { fetchAbonnes(); }, []);
 
   const fetchAbonnes = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/autorite/abonnes-email', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const res   = await fetch('http://localhost:5000/api/autorite/abonnes-email', {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setAbonnes(data);
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-    }
+      if (res.ok) setAbonnes(await res.json());
+    } catch (e) { console.error(e); }
   };
 
   const appliquerMessage = (type) => {
     setNiveauUrgence(type);
-    setMessage(messagesPredefinis[type].message);
+    setMessage(MESSAGES_PREDEFINIS[type].message);
   };
 
   const envoyerAlerte = async () => {
-    if (!message.trim()) {
-      setError('Veuillez saisir un message');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    
+    if (!message.trim()) { setError('Veuillez saisir un message'); return; }
+    setLoading(true); setError('');
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/autorite/alertes/email', {
+      const res   = await fetch('http://localhost:5000/api/autorite/alertes/email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ zone, message, niveauUrgence })
+        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+        body: JSON.stringify({ zone, message, niveauUrgence }),
       });
-
       const data = await res.json();
-
-      if (res.ok) {
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
-      } else {
-        setError(data.error || 'Erreur lors de l\'envoi');
-      }
-    } catch (err) {
-      setError('Erreur de connexion au serveur');
-    } finally {
-      setLoading(false);
-    }
+      if (res.ok) { setSuccess(true); setTimeout(() => setSuccess(false), 4000); }
+      else setError(data.error || "Erreur lors de l'envoi");
+    } catch { setError('Erreur de connexion au serveur'); }
+    finally { setLoading(false); }
   };
 
-  const getStyle = () => {
-    switch(niveauUrgence) {
-      case 'urgence': return { bg: '#dc2626', color: 'white' };
-      case 'alerte': return { bg: '#f97316', color: 'white' };
-      case 'vigilance': return { bg: '#eab308', color: '#1e293b' };
-      default: return { bg: '#3b82f6', color: 'white' };
-    }
-  };
-
-  const style = getStyle();
-
-  const abonnesParZone = zones.reduce((acc, z) => {
+  const cfg = MESSAGES_PREDEFINIS[niveauUrgence];
+  const abonnesParZone = ZONES.reduce((acc, z) => {
     acc[z] = abonnes.filter(a => a.departement === z).length;
     return acc;
   }, {});
+  const destinataires = zone === 'Tous' ? abonnes.length : (abonnesParZone[zone] || 0);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem 1rem' }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        
-        <button onClick={() => navigate(-1)} style={{ background: '#e2e8f0', border: 'none', padding: '0.5rem 1rem', borderRadius: '50px', cursor: 'pointer', marginBottom: '1rem' }}>
-          ← Retour
-        </button>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=Sora:wght@400;500&display=swap');
 
-        <div style={{ background: 'white', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
-          
-          <div style={{ background: '#1e3a8a', padding: '1.5rem', color: 'white', textAlign: 'center' }}>
-            <h1 style={{ margin: 0 }}>📧 Alertes Email de masse</h1>
-            <p style={{ opacity: 0.9, margin: '0.25rem 0 0' }}>Envoyez des alertes aux populations par email</p>
+        .ea-page { font-family:'Sora',sans-serif; background:#f1f5f9; min-height:100vh; color:#1e293b; }
+
+        /* ── HEADER ── */
+        .ea-header {
+          background:linear-gradient(135deg,#0a1f44 0%,#1a56db 100%);
+          padding:2.5rem 2rem 3rem; position:relative; overflow:hidden; 
+  margin-top: -68px;
+  padding-top: calc(6rem + 68px);
+        }
+        .ea-header::before {
+          content:''; position:absolute; inset:0;
+          background:radial-gradient(ellipse 60% 80% at 90% 50%,rgba(56,189,248,.15) 0%,transparent 60%);
+          pointer-events:none;
+        }
+        .ea-header-inner { max-width:960px; margin:0 auto; position:relative; }
+        .ea-back {
+          display:inline-flex; align-items:center; gap:.4rem;
+          background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2);
+          color:rgba(255,255,255,.85); font-family:'Outfit',sans-serif;
+          font-size:.82rem; font-weight:600; padding:.4rem 1rem;
+          border-radius:99px; cursor:pointer; margin-bottom:1.2rem;
+          transition:background .2s;
+        }
+        .ea-back:hover { background:rgba(255,255,255,.18); }
+        .ea-header-tag {
+          display:inline-block; background:rgba(6,182,212,.15);
+          border:1px solid rgba(6,182,212,.3); color:#38bdf8;
+          font-family:'Outfit',sans-serif; font-size:.75rem; font-weight:700;
+          letter-spacing:.1em; text-transform:uppercase;
+          padding:.3rem .9rem; border-radius:99px; margin-bottom:.8rem;
+        }
+        .ea-header h1 {
+          font-family:'Outfit',sans-serif; font-size:clamp(1.5rem,3vw,2.2rem);
+          font-weight:900; color:#fff; margin-bottom:.3rem;
+        }
+        .ea-header h1 span {
+          background:linear-gradient(90deg,#38bdf8,#06b6d4);
+          -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+        }
+        .ea-header p { color:rgba(255,255,255,.7); font-size:.9rem; }
+        .ea-wave { position:absolute; bottom:-2px; left:0; width:100%; line-height:0; pointer-events:none; }
+
+        /* ── BODY ── */
+        .ea-body { max-width:960px; margin:1.5rem auto 0; padding:0 1.5rem 4rem; position:relative; z-index:2; }
+        .ea-label {
+          font-family:'Outfit',sans-serif; font-weight:700; font-size:.75rem;
+          letter-spacing:.1em; text-transform:uppercase; color:#94a3b8;
+          margin-bottom:.9rem; margin-top:2rem;
+        }
+
+        /* ── GRID PRINCIPAL ── */
+        .ea-grid { display:grid; grid-template-columns:1fr 320px; gap:1.5rem; align-items:start; }
+
+        /* ── FORMULAIRE ── */
+        .ea-form-card {
+          background:#fff; border:1px solid #e2e8f0;
+          border-radius:18px; overflow:hidden;
+          box-shadow:0 2px 12px rgba(0,0,0,.05);
+        }
+        .ea-form-header {
+          background:linear-gradient(135deg,#0a1f44,#1a56db);
+          padding:1.1rem 1.5rem;
+          display:flex; align-items:center; gap:.6rem;
+        }
+        .ea-form-header h2 { font-family:'Outfit',sans-serif; font-weight:800; font-size:1rem; color:#fff; margin:0; }
+        .ea-form-body { padding:1.5rem; }
+
+        /* Messages prédéfinis */
+        .ea-predef-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.6rem; margin-bottom:1.5rem; }
+        .ea-predef-btn {
+          display:flex; align-items:center; gap:.5rem;
+          padding:.65rem 1rem; border-radius:12px; border:2px solid;
+          cursor:pointer; font-family:'Outfit',sans-serif;
+          font-weight:700; font-size:.85rem;
+          transition:transform .15s, box-shadow .15s;
+        }
+        .ea-predef-btn:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.1); }
+        .ea-predef-btn.active { box-shadow:0 0 0 3px rgba(0,0,0,.15) inset; }
+
+        /* Champs */
+        .ea-field { margin-bottom:1.2rem; }
+        .ea-field label {
+          display:block; font-family:'Outfit',sans-serif;
+          font-weight:700; font-size:.82rem; color:#374151; margin-bottom:.45rem;
+        }
+        .ea-select, .ea-textarea {
+          width:100%; font-family:'Sora',sans-serif; font-size:.9rem;
+          color:#1e293b; border-radius:12px; outline:none;
+          transition:border-color .2s, box-shadow .2s;
+        }
+        .ea-select {
+          padding:.65rem 1rem; border:1.5px solid #e2e8f0; background:#f8fafc;
+          cursor:pointer;
+        }
+        .ea-select:focus { border-color:#1a56db; box-shadow:0 0 0 3px rgba(26,86,219,.1); }
+        .ea-textarea {
+          padding:.75rem 1rem; border:1.5px solid; resize:vertical; min-height:130px;
+        }
+        .ea-textarea:focus { box-shadow:0 0 0 3px rgba(26,86,219,.1); }
+
+        /* Aperçu */
+        .ea-preview {
+          border-radius:12px; padding:1rem 1.2rem;
+          margin-bottom:1.2rem; border:1.5px solid;
+        }
+        .ea-preview-title { font-family:'Outfit',sans-serif; font-weight:800; font-size:.85rem; margin-bottom:.4rem; }
+        .ea-preview-msg { font-size:.88rem; line-height:1.6; }
+
+        /* Destinataires */
+        .ea-dest {
+          display:flex; align-items:center; justify-content:space-between;
+          background:#f0f7ff; border:1px solid #bfdbfe;
+          border-radius:10px; padding:.65rem 1rem; margin-bottom:1.2rem;
+        }
+        .ea-dest-label { font-size:.82rem; color:#475569; }
+        .ea-dest-count { font-family:'Outfit',sans-serif; font-weight:900; font-size:1.1rem; color:#1a56db; }
+
+        /* Feedback */
+        .ea-success {
+          background:#f0fdf4; border:1px solid #86efac; color:#16a34a;
+          border-radius:10px; padding:.7rem 1rem; font-size:.88rem;
+          font-weight:600; text-align:center; margin-bottom:1rem;
+        }
+        .ea-error {
+          background:#fef2f2; border:1px solid #fca5a5; color:#dc2626;
+          border-radius:10px; padding:.7rem 1rem; font-size:.88rem;
+          text-align:center; margin-bottom:1rem;
+        }
+
+        /* Bouton envoyer */
+        .ea-btn-send {
+          width:100%; padding:.9rem 1rem;
+          background:linear-gradient(135deg,#dc2626,#ef4444);
+          color:#fff; border:none; border-radius:12px;
+          font-family:'Outfit',sans-serif; font-weight:900; font-size:1rem;
+          cursor:pointer; box-shadow:0 4px 16px rgba(220,38,38,.35);
+          transition:transform .2s, box-shadow .2s, opacity .2s;
+        }
+        .ea-btn-send:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 6px 22px rgba(220,38,38,.45); }
+        .ea-btn-send:disabled { opacity:.65; cursor:not-allowed; }
+
+        .ea-hint { font-size:.72rem; color:#94a3b8; text-align:center; margin-top:.8rem; line-height:1.5; }
+
+        /* ── SIDEBAR STATS ── */
+        .ea-sidebar { display:flex; flex-direction:column; gap:1.2rem; }
+
+        .ea-stats-card {
+          background:#fff; border:1px solid #e2e8f0;
+          border-radius:18px; overflow:hidden;
+          box-shadow:0 2px 12px rgba(0,0,0,.05);
+        }
+        .ea-stats-header {
+          background:linear-gradient(135deg,#0a1f44,#1a56db);
+          padding:.9rem 1.2rem;
+        }
+        .ea-stats-header h3 { font-family:'Outfit',sans-serif; font-weight:800; font-size:.95rem; color:#fff; margin:0; }
+        .ea-stats-body { padding:1rem; }
+
+        .ea-total-row {
+          display:flex; align-items:center; justify-content:space-between;
+          background:#f0f7ff; border:1px solid #bfdbfe;
+          border-radius:10px; padding:.7rem 1rem; margin-bottom:.75rem;
+        }
+        .ea-total-label { font-size:.82rem; color:#475569; font-weight:600; }
+        .ea-total-num { font-family:'Outfit',sans-serif; font-weight:900; font-size:1.4rem; color:#1a56db; }
+
+        .ea-zone-list { display:flex; flex-direction:column; gap:.4rem; }
+        .ea-zone-row {
+          display:flex; align-items:center; justify-content:space-between;
+          padding:.5rem .7rem; border-radius:8px; background:#f8fafc;
+          border:1px solid #f1f5f9; transition:background .15s;
+        }
+        .ea-zone-row:hover { background:#f0f7ff; }
+        .ea-zone-name { font-size:.82rem; color:#475569; font-weight:500; }
+        .ea-zone-count {
+          font-family:'Outfit',sans-serif; font-weight:700;
+          font-size:.82rem; color:#1a56db;
+          background:#eff6ff; padding:.15rem .55rem; border-radius:99px;
+        }
+
+        @media (max-width:820px) {
+          .ea-grid { grid-template-columns:1fr; }
+          .ea-predef-grid { grid-template-columns:repeat(2,1fr); }
+        }
+      `}</style>
+
+      <div className="ea-page">
+
+        {/* ── HEADER ── */}
+        <div className="ea-header">
+          <div className="ea-header-inner">
+            <button className="ea-back" onClick={() => navigate(-1)}>← Retour</button>
+            <div style={{ marginTop: "1.5rem" }}>
+            <div className="ea-header-tag">📧 Espace Autorité</div>
+            <h1>Alertes <span>email de masse</span></h1>
+            <p>Envoyez des alertes ciblées aux populations abonnées par département</p>
+            </div>
           </div>
-
-          <div style={{ padding: '1.5rem' }}>
-            
-            {/* Messages prédéfinis */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>📌 Messages prédéfinis</label>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button onClick={() => appliquerMessage('info')} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>ℹ️ Info</button>
-                <button onClick={() => appliquerMessage('vigilance')} style={{ background: '#eab308', color: '#1e293b', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>🟡 Vigilance</button>
-                <button onClick={() => appliquerMessage('alerte')} style={{ background: '#f97316', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>🟠 Alerte</button>
-                <button onClick={() => appliquerMessage('urgence')} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>🔴 Urgence</button>
-              </div>
-            </div>
-
-            {/* Zone */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>📍 Zone de diffusion</label>
-              <select value={zone} onChange={(e) => setZone(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ccc' }}>
-                <option value="Tous">📌 Tous les départements ({abonnes.length} abonnés)</option>
-                {zones.map(z => <option key={z} value={z}>{z} ({abonnesParZone[z] || 0} abonnés)</option>)}
-              </select>
-            </div>
-
-            {/* Message */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>✉️ Message d'alerte</label>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows="5"
-                style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: `2px solid ${style.bg}`, fontSize: '1rem' }}
-                placeholder="Saisissez votre message d'alerte..."
-              />
-            </div>
-
-            {/* Aperçu */}
-            {message && (
-              <div style={{ background: style.bg, color: style.color, padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', textAlign: 'center' }}>
-                <strong>Aperçu de l'email</strong>
-                <p style={{ margin: '0.5rem 0 0' }}>{message}</p>
-              </div>
-            )}
-
-            {/* Messages */}
-            {success && <div style={{ background: '#dcfce7', color: '#16a34a', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'center' }}>✅ Alerte email envoyée avec succès !</div>}
-            {error && <div style={{ background: '#fee2e2', color: '#dc2626', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'center' }}>❌ {error}</div>}
-
-            {/* Bouton */}
-            <button
-              onClick={envoyerAlerte}
-              disabled={loading}
-              style={{ width: '100%', background: '#dc2626', color: 'white', padding: '1rem', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', opacity: loading ? 0.7 : 1 }}
-            >
-              {loading ? '⏳ Envoi en cours...' : '📧 ENVOYER L\'ALERTE EMAIL'}
-            </button>
-
-            <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', fontSize: '0.7rem', color: '#64748b', textAlign: 'center' }}>
-              💡 Les emails sont envoyés avec un template professionnel incluant le niveau d'alerte et la carte des risques.
-            </div>
+          <div className="ea-wave">
+            <svg viewBox="0 0 1440 50" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+              <path d="M0,20 C480,50 960,0 1440,25 L1440,50 L0,50 Z" fill="#f1f5f9"/>
+            </svg>
           </div>
         </div>
 
-        {/* Statistiques des abonnés */}
-        <div style={{ background: 'white', borderRadius: '20px', padding: '1rem', marginTop: '1.5rem' }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e3a8a' }}>📊 Statistiques des abonnés email</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.5rem' }}>
-            <div style={{ textAlign: 'center', padding: '0.5rem', background: '#f8fafc', borderRadius: '8px' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e3a8a' }}>{abonnes.length}</div>
-              <div style={{ fontSize: '0.7rem' }}>Total abonnés</div>
-            </div>
-            {Object.entries(abonnesParZone).slice(0, 6).map(([zoneName, count]) => (
-              <div key={zoneName} style={{ textAlign: 'center', padding: '0.5rem', background: '#f8fafc', borderRadius: '8px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{zoneName}</div>
-                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{count} abonnés</div>
+        <div className="ea-body">
+          <div className="ea-grid">
+
+            {/* ── FORMULAIRE ── */}
+            <div className="ea-form-card">
+              <div className="ea-form-header">
+                <span style={{ fontSize:'1.2rem' }}>✉️</span>
+                <h2>Composer l'alerte</h2>
               </div>
-            ))}
+              <div className="ea-form-body">
+
+                {/* Messages prédéfinis */}
+                <div className="ea-field">
+                  <label>📌 Niveau d'alerte</label>
+                  <div className="ea-predef-grid">
+                    {Object.entries(MESSAGES_PREDEFINIS).map(([key, val]) => (
+                      <button
+                        key={key}
+                        className={`ea-predef-btn ${niveauUrgence === key ? 'active' : ''}`}
+                        style={{ background: niveauUrgence === key ? val.bg : '#f8fafc', color: val.color, borderColor: niveauUrgence === key ? val.color : '#e2e8f0' }}
+                        onClick={() => appliquerMessage(key)}
+                      >
+                        {val.icon} {val.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Zone */}
+                <div className="ea-field">
+                  <label>📍 Zone de diffusion</label>
+                  <select className="ea-select" value={zone} onChange={e => setZone(e.target.value)}>
+                    <option value="Tous">📌 Tous les départements ({abonnes.length} abonnés)</option>
+                    {ZONES.map(z => (
+                      <option key={z} value={z}>{z} ({abonnesParZone[z] || 0} abonnés)</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Message */}
+                <div className="ea-field">
+                  <label>✉️ Message d'alerte</label>
+                  <textarea
+                    className="ea-textarea"
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    placeholder="Saisissez votre message d'alerte ou choisissez un modèle ci-dessus..."
+                    style={{ borderColor: cfg.color }}
+                  />
+                </div>
+
+                {/* Aperçu */}
+                {message && (
+                  <div className="ea-preview" style={{ background: cfg.bg, borderColor: cfg.border }}>
+                    <div className="ea-preview-title" style={{ color: cfg.color }}>
+                      {cfg.icon} Aperçu de l'email · {cfg.label}
+                    </div>
+                    <div className="ea-preview-msg" style={{ color: cfg.color }}>{message}</div>
+                  </div>
+                )}
+
+                {/* Destinataires */}
+                <div className="ea-dest">
+                  <span className="ea-dest-label">👥 Destinataires ({zone === 'Tous' ? 'tous les dép.' : zone})</span>
+                  <span className="ea-dest-count">{destinataires} abonné{destinataires !== 1 ? 's' : ''}</span>
+                </div>
+
+                {/* Feedback */}
+                {success && <div className="ea-success">✅ Alerte envoyée avec succès à {destinataires} abonné{destinataires !== 1 ? 's' : ''} !</div>}
+                {error   && <div className="ea-error">❌ {error}</div>}
+
+                {/* Bouton */}
+                <button className="ea-btn-send" onClick={envoyerAlerte} disabled={loading || !message.trim()}>
+                  {loading ? '⏳ Envoi en cours...' : `📧 Envoyer l'alerte à ${destinataires} personne${destinataires !== 1 ? 's' : ''}`}
+                </button>
+
+                <p className="ea-hint">
+                  💡 Les emails sont envoyés avec un template professionnel incluant le niveau d'alerte et la carte des risques.
+                </p>
+
+              </div>
+            </div>
+
+            {/* ── SIDEBAR ── */}
+            <div className="ea-sidebar">
+              <div className="ea-stats-card">
+                <div className="ea-stats-header">
+                  <h3>📊 Abonnés par département</h3>
+                </div>
+                <div className="ea-stats-body">
+                  <div className="ea-total-row">
+                    <span className="ea-total-label">Total abonnés</span>
+                    <span className="ea-total-num">{abonnes.length}</span>
+                  </div>
+                  <div className="ea-zone-list">
+                    {ZONES.map(z => (
+                      <div className="ea-zone-row" key={z}>
+                        <span className="ea-zone-name">📍 {z}</span>
+                        <span className="ea-zone-count">{abonnesParZone[z] || 0}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

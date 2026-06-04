@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 router.get('/mes-signalements', estCitoyen, async (req, res) => {
   try {
     const signalements = await prisma.signalements.findMany({
-      where: { citoyens: { id: req.utilisateur.id } },  // ← syntaxe correcte
+      where: { citoyen_id: req.utilisateur.id },
       orderBy: { date_creation: 'desc' }
     });
     res.json(signalements);
@@ -29,12 +29,14 @@ router.post('/signaler', estCitoyen, async (req, res) => {
 
     const signalement = await prisma.signalements.create({
       data: {
-        citoyen_id: req.utilisateur.id,
+        citoyens: {
+          connect: { id: req.utilisateur.id }
+        },
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),
         niveau_eau: niveau_eau,
         description: description || null,
-        lieu: lieu || null,           // ← AJOUTE CETTE LIGNE
+        lieu: lieu || null,
         photo_url: photo_url || null,
         statut: 'en_attente'
       }
