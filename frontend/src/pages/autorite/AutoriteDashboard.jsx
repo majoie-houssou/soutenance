@@ -86,10 +86,6 @@ const AutoriteDashboard = () => {
           background: linear-gradient(135deg,#0a1f44 0%,#1a56db 100%);
           padding: 2.5rem 2rem 4.5rem;
           position:relative; overflow:hidden;
-
-           
-  margin-top: -68px;
-  padding-top: calc(6rem + 68px);
         }
         .ad-banner::before {
           content:''; position:absolute; inset:0;
@@ -263,7 +259,9 @@ const AutoriteDashboard = () => {
                 <p>Tableau de bord · <strong>Espace Autorité</strong></p>
               </div>
             </div>
-            
+            <button className="ad-btn-logout" onClick={() => { logout(); window.location.href='/'; }}>
+              🚪 Déconnexion
+            </button>
           </div>
           <div className="ad-wave">
             <svg viewBox="0 0 1440 50" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
@@ -327,7 +325,7 @@ const AutoriteDashboard = () => {
                           <span className="ad-signal-dot" style={{ background:niv.color }} />
                           <div style={{ flex:1 }}>
                             <div className="ad-signal-loc">
-                              📍 {s.commune || `${s.latitude?.toFixed(3)}, ${s.longitude?.toFixed(3)}`}
+                              📍 {s.commune || `${parseFloat(s.latitude || 0).toFixed(3)}, ${parseFloat(s.longitude || 0).toFixed(3)}`}
                             </div>
                             <div className="ad-signal-desc">{s.description || 'Aucune description'}</div>
                             <div className="ad-signal-badges">

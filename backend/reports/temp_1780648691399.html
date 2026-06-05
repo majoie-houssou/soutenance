@@ -1,46 +1,4 @@
-const express = require('express');
-const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const { estAutorite } = require('../middleware/authMiddleware');
-const puppeteer = require('puppeteer-core');
-const path = require('path');
-const fs = require('fs');
 
-const prisma = new PrismaClient();
-
-// Créer le dossier reports s'il n'existe pas
-const reportsDir = path.join(__dirname, '../../reports');
-if (!fs.existsSync(reportsDir)) {
-  fs.mkdirSync(reportsDir, { recursive: true });
-}
-
-// Chemin vers Chrome
-const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-
-// ==================== RAPPORTS PDF ====================
-// Remplacez uniquement la route router.post('/rapports/generer', ...) par ce code
-
-router.post('/rapports/generer', estAutorite, async (req, res) => {
-  try {
-    const { dateDebut, dateFin, zones, sinistres, ressources } = req.body;
-    const nomAutorite = req.utilisateur.nom || 'Autorité';
-    const prenomAutorite = req.utilisateur.prenom || '';
-    const dateGeneration = new Date().toLocaleString('fr-FR');
-    const fileName = `rapport_crise_${Date.now()}.pdf`;
-    const filePath = path.join(reportsDir, fileName);
-
-    // Calcul durée de crise
-    const debut = new Date(dateDebut);
-    const fin   = new Date(dateFin);
-    const dureeJours = Math.ceil((fin - debut) / (1000 * 60 * 60 * 24));
-
-    // Récupérer stats réelles depuis la base
-    const [totalSignalements, totalSinistresDB] = await Promise.all([
-      prisma.signalements.count(),
-      prisma.sinistres.count(),
-    ]);
-
-    const htmlContent = `
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -225,8 +183,8 @@ router.post('/rapports/generer', estAutorite, async (req, res) => {
         </div>
       </div>
       <div class="doc-ref">
-        Réf : RPT-${Date.now().toString().slice(-6)}<br/>
-        Généré le : ${dateGeneration}<br/>
+        Réf : RPT-691379<br/>
+        Généré le : 05/06/2026 09:38:11<br/>
         Format : PDF officiel
       </div>
     </div>
@@ -244,19 +202,19 @@ router.post('/rapports/generer', estAutorite, async (req, res) => {
     <!-- STATS -->
     <div class="stats-row">
       <div class="stat-card" style="border-top-color:#1a56db">
-        <div class="stat-num" style="color:#1a56db">${dureeJours}</div>
+        <div class="stat-num" style="color:#1a56db">1</div>
         <div class="stat-label">Jours de crise</div>
       </div>
       <div class="stat-card" style="border-top-color:#f97316">
-        <div class="stat-num" style="color:#f97316">${parseInt(sinistres || 0).toLocaleString('fr-FR')}</div>
+        <div class="stat-num" style="color:#f97316">34</div>
         <div class="stat-label">Sinistrés déclarés</div>
       </div>
       <div class="stat-card" style="border-top-color:#dc2626">
-        <div class="stat-num" style="color:#dc2626">${totalSignalements}</div>
+        <div class="stat-num" style="color:#dc2626">3</div>
         <div class="stat-label">Signalements reçus</div>
       </div>
       <div class="stat-card" style="border-top-color:#16a34a">
-        <div class="stat-num" style="color:#16a34a">${totalSinistresDB}</div>
+        <div class="stat-num" style="color:#16a34a">0</div>
         <div class="stat-label">Familles suivies</div>
       </div>
     </div>
@@ -267,12 +225,12 @@ router.post('/rapports/generer', estAutorite, async (req, res) => {
       <div class="info-grid">
         <div class="info-card" style="border-left-color:#1a56db">
           <div class="label">Date de début</div>
-          <div class="value">${new Date(dateDebut).toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</div>
+          <div class="value">samedi 6 juin 2026</div>
         </div>
         <div class="info-card" style="border-left-color:#16a34a">
           <div class="label">Date de fin</div>
-          <div class="value">${new Date(dateFin).toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</div>
-          <div class="sub">Durée totale : ${dureeJours} jour${dureeJours > 1 ? 's' : ''}</div>
+          <div class="value">dimanche 7 juin 2026</div>
+          <div class="sub">Durée totale : 1 jour</div>
         </div>
       </div>
     </div>
@@ -281,7 +239,7 @@ router.post('/rapports/generer', estAutorite, async (req, res) => {
     <div class="section">
       <div class="section-title">📍 Zones touchées</div>
       <div class="zones-card">
-        <div class="zones-text">${zones}</div>
+        <div class="zones-text">cotonou</div>
       </div>
     </div>
 
@@ -289,7 +247,7 @@ router.post('/rapports/generer', estAutorite, async (req, res) => {
     <div class="section">
       <div class="section-title">🚑 Ressources mobilisées</div>
       <div class="ressources-card">
-        <div class="ressources-text">${ressources || 'Non spécifiées'}</div>
+        <div class="ressources-text">32 secouristes </div>
       </div>
     </div>
 
@@ -308,13 +266,13 @@ router.post('/rapports/generer', estAutorite, async (req, res) => {
     <!-- SIGNATURE -->
     <div class="signature">
       <div class="sig-left">
-        <div class="sig-name">👤 ${prenomAutorite} ${nomAutorite}</div>
+        <div class="sig-name">👤  Administrateur</div>
         <div class="sig-role">Autorité responsable — InondoBénin</div>
       </div>
       <div class="sig-right">
         Généré automatiquement par<br/>
         <strong>InondoBénin</strong><br/>
-        ${dateGeneration}
+        05/06/2026 09:38:11
       </div>
     </div>
 
@@ -326,70 +284,4 @@ router.post('/rapports/generer', estAutorite, async (req, res) => {
 
   </div>
 </body>
-</html>`;
-
-    // Mode simulation si Chrome non trouvé
-    if (!fs.existsSync(CHROME_PATH)) {
-      const rapport = await prisma.rapports_crise.create({
-        data: {
-          titre: `Rapport de crise - ${dateDebut} à ${dateFin}`,
-          zones_touchees: zones,
-          nombre_sinistres: sinistres ? parseInt(sinistres) : null,
-          ressources_mobilisees: ressources || null,
-          url_pdf: `/reports/${fileName}`,
-          genere_par: req.utilisateur.id
-        }
-      });
-      return res.json({ success: true, mode: 'simulation', rapport, message: 'Chrome non trouvé — rapport enregistré en base sans PDF.' });
-    }
-
-    // Écrire le HTML dans un fichier temporaire
-    const htmlPath = path.join(reportsDir, `temp_${Date.now()}.html`);
-    fs.writeFileSync(htmlPath, htmlContent, 'utf8');
-
-    const browser = await puppeteer.launch({
-      headless: 'new',
-      executablePath: CHROME_PATH,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
-    });
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1200, height: 800 });
-
-    // Charger via fichier local (plus fiable que setContent)
-    await page.goto(`file:///\${htmlPath.replace(/\\/g, '/')}`, { waitUntil: 'networkidle0', timeout: 30000 });
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    await page.pdf({
-      path: filePath,
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' }
-    });
-    await browser.close();
-
-    // Supprimer le fichier HTML temporaire
-    fs.unlinkSync(htmlPath);
-
-    const rapport = await prisma.rapports_crise.create({
-      data: {
-        titre: `Rapport de crise - ${dateDebut} à ${dateFin}`,
-        zones_touchees: zones,
-        nombre_sinistres: sinistres ? parseInt(sinistres) : null,
-        ressources_mobilisees: ressources || null,
-        url_pdf: `/reports/${fileName}`,
-        genere_par: req.utilisateur.id
-      }
-    });
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.sendFile(filePath);
-
-  } catch (error) {
-    console.error('Erreur génération PDF:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-module.exports = router;
+</html>
