@@ -512,7 +512,7 @@ const Accueil = () => {
         </p>
         <div className="ib-hero-btns">
           <Link to="/carte" className="ib-btn-primary">🗺️ Explorer la carte</Link>
-          <Link to="/signaler" className="ib-btn-ghost">📡 Signaler une inondation</Link>
+          <Link to="/connexion" className="ib-btn-ghost">📡 Signaler une inondation</Link>
         </div>
  
         {/* Vague décorative */}
@@ -579,7 +579,7 @@ const Accueil = () => {
         <h2>Rejoignez la communauté de vigilance</h2>
         <p>Créez un compte citoyen et contribuez à protéger votre communauté contre les inondations.</p>
         <div className="ib-cta-btns">
-          <Link to="/connexion" className="ib-btn-white">🚀 Créer un compte</Link>
+           <Link to="/signaler" className="ib-btn-ghost">🚀 Créer un compte</Link>
           
         </div>
       </section>

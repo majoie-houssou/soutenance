@@ -20,6 +20,30 @@ model abonnes_sms {
   @@index([telephone], map: "idx_abonnes_sms_telephone")
 }
 
+model abonnes_email {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique @db.VarChar(100)
+  nom             String?   @db.VarChar(100)
+  departement     String?   @db.VarChar(50)
+  commune         String?   @db.VarChar(50)
+  telephone       String?   @db.VarChar(20)
+  actif           Boolean?  @default(true)
+  date_abonnement DateTime? @default(now()) @db.Timestamp(6)
+
+}
+
+model historiques_emails {
+  id            Int       @id @default(autoincrement())
+  zone          String?   @db.VarChar(50)
+  message       String
+  niveau_alerte String?   @db.VarChar(30)
+  destinataires Int?
+  succes        Int?
+  echec         Int?
+  statut        String?   @default("envoye") @db.VarChar(20)
+  date_envoi    DateTime? @default(now()) @db.Timestamp(6)
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model alertes_departement {
@@ -64,6 +88,7 @@ model autorites {
 model citoyens {
   id               Int            @id @default(autoincrement())
   telephone        String         @unique @db.VarChar(20)
+  email            String         @unique
   mot_de_passe     String         @db.VarChar(255)
   nom              String         @db.VarChar(100)
   prenom           String?        @db.VarChar(100)
@@ -179,15 +204,13 @@ model rapports_crise {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model signalements {
-  id         Int     @id @default(autoincrement())
-  citoyen_id Int?
-  latitude   Decimal @db.Decimal(10, 8)
-  longitude  Decimal @db.Decimal(11, 8)
-
-  lieu String? @db.VarChar(255)
-
+  id                 Int                  @id @default(autoincrement())
+  citoyen_id         Int?
+  latitude           Decimal              @db.Decimal(10, 8)
+  longitude          Decimal              @db.Decimal(11, 8)
   niveau_eau         String               @db.VarChar(30)
   description        String?
+  lieu               String?              @db.VarChar(255)
   photo_url          String?
   statut             String?              @default("en_attente") @db.VarChar(20)
   zone_risque_id     Int?

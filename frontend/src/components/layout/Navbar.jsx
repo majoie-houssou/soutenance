@@ -311,6 +311,7 @@ const Navbar = () => {
           <div className="ib-nav-actions">
             {!authenticated ? (
               <Link to="/connexion" className="ib-btn-cnx">🔐 Connexion</Link>
+              
             ) : (
               <>
                 {role === 'CITOYEN' && (

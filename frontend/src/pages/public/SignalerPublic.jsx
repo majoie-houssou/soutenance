@@ -1,41 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const SignalerPublic = () => {
+const Inscription = () => {
   const navigate = useNavigate();
-  const [position, setPosition] = useState(null);
-  const [niveauEau, setNiveauEau] = useState('');
-  const [description, setDescription] = useState('');
   const [nom, setNom] = useState('');
+  const [prenom, setPrenom] = useState('');
+  const [email, setEmail] = useState('');
   const [telephone, setTelephone] = useState('');
+  const [commune, setCommune] = useState('Cotonou'); // Valeur par défaut initiale
   const [motDePasse, setMotDePasse] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-
-  const getLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => alert('Activez la géolocalisation')
-      );
-    } else {
-      alert('Géolocalisation non supportée');
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!position) {
-      setError('Veuillez partager votre position');
-      return;
-    }
-    if (!niveauEau) {
-      setError('Veuillez sélectionner le niveau d\'eau');
-      return;
-    }
-    if (!telephone) {
-      setError('Veuillez entrer votre numéro de téléphone');
+    
+    if (!nom || !email || !telephone || !motDePasse) {
+      setError('Veuillez remplir tous les champs obligatoires (*).');
       return;
     }
 
@@ -43,112 +24,158 @@ const SignalerPublic = () => {
     setError('');
 
     try {
-      // Créer le compte citoyen + envoyer le signalement
-      const response = await fetch('http://localhost:5000/api/public/inscription-signalement', {
+      const response = await fetch('http://localhost:5000/api/auth/inscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          telephone,
-          motDePasse: motDePasse || 'citoyen123',
-          nom: nom || 'Citoyen',
-          latitude: position.lat,
-          longitude: position.lng,
-          niveau_eau: niveauEau,
-          description
+          nom: nom.trim(),
+          prenom: prenom.trim(),
+          email: email.toLowerCase().trim(),
+          telephone: telephone.trim(),
+          commune: commune,
+          motDePasse
         })
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Connexion automatique
+        // 🚨 FIX : Stockage complet de la session pour satisfaire les Routes Protégées et le Dashboard
         localStorage.setItem('token', data.token);
-        localStorage.setItem('role', 'CITOYEN');
-        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('role', data.role || 'CITOYEN');
         
-        setSuccess(true);
-        setTimeout(() => navigate('/citoyen/dashboard'), 2000);
+        // On construit l'objet complet attendu par React
+        localStorage.setItem('user', JSON.stringify({
+          id: data.id,
+          nom: data.nom || nom,
+          prenom: data.prenom || prenom,
+          email: data.email || email
+        }));
+        
+        // Redirection vers le tableau de bord
+        navigate('/citoyen/dashboard');
       } else {
-        setError(data.error || 'Erreur lors de l\'inscription');
+        setError(data.message || data.error || "Une erreur est survenue lors de l'inscription.");
       }
     } catch (err) {
-      setError('Erreur de connexion au serveur');
+      console.error(err);
+      setError('Erreur de connexion au serveur. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '4rem' }}>✅</div>
-          <h2>Inscription et signalement réussis !</h2>
-          <p>Redirection vers votre espace citoyen...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem 1rem' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem 1rem', display: 'flex', alignItems: 'center' }}>
+      <div style={{ maxWidth: '500px', width: '100%', margin: '0 auto' }}>
         
-        <button onClick={() => navigate(-1)} style={{ marginBottom: '1rem' }}>← Retour</button>
+        <button 
+          onClick={() => navigate(-1)} 
+          style={{ marginBottom: '1rem', background: '#e2e8f0', border: 'none', padding: '0.5rem 1rem', borderRadius: '50px', cursor: 'pointer', fontWeight: '500', color: '#1e3a8a' }}
+        >
+          ← Retour
+        </button>
 
-        <div style={{ background: 'white', borderRadius: '24px', padding: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
-          <h1 style={{ color: '#1e3a8a', textAlign: 'center' }}>🚨 Inscription & Signalement</h1>
-          <p style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Créez votre compte citoyen et signalez une inondation en même temps</p>
+        <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem 2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
+          <h1 style={{ color: '#1e3a8a', textAlign: 'center', margin: '0 0 0.5rem 0', fontSize: '1.8rem' }}>🔐 Créer un compte Citoyen</h1>
+          <p style={{ textAlign: 'center', marginBottom: '2rem', color: '#64748b', fontSize: '0.95rem' }}>
+            Rejoignez la plateforme **Inondo** pour suivre les alertes et gérer vos abonnements.
+          </p>
 
-          {error && <div style={{ background: '#fee2e2', color: '#dc2626', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
+          {error && (
+            <div style={{ background: '#fee2e2', color: '#dc2626', padding: '0.75rem', borderRadius: '12px', marginBottom: '1.5rem', textAlign: 'center', fontSize: '0.9rem', fontWeight: '500' }}>
+              ⚠️ {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '1rem' }}>
-              <label>📞 Votre numéro de téléphone *</label>
-              <input type="tel" value={telephone} onChange={(e) => setTelephone(e.target.value)} placeholder="22990123456" required style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+            
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem', color: '#334155' }}>Nom *</label>
+              <input 
+                type="text" 
+                value={nom} 
+                onChange={(e) => setNom(e.target.value)} 
+                placeholder="ex: HOUSSOU" 
+                required 
+                style={{ width: '100%', padding: '0.7rem', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '1rem' }} 
+              />
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label>👤 Votre nom (optionnel)</label>
-              <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Jean DJIMASSO" style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem', color: '#334155' }}>Prénom</label>
+              <input 
+                type="text" 
+                value={prenom} 
+                onChange={(e) => setPrenom(e.target.value)} 
+                placeholder="ex: Marie-Joie" 
+                style={{ width: '100%', padding: '0.7rem', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '1rem' }} 
+              />
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label>🔑 Mot de passe (optionnel, défaut: citoyen123)</label>
-              <input type="password" value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} placeholder="Laissez vide pour un mot de passe automatique" style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem', color: '#334155' }}>Adresse Email *</label>
+              <input 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                placeholder="ex: mariejoie@gmail.com" 
+                required 
+                style={{ width: '100%', padding: '0.7rem', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '1rem' }} 
+              />
             </div>
 
-            <hr style={{ margin: '1rem 0' }} />
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label>📍 Position GPS *</label>
-              <button type="button" onClick={getLocation} style={{ width: '100%', background: '#3b82f6', color: 'white', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>
-                {position ? '✓ Position enregistrée' : '📱 Partager ma position'}
-              </button>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem', color: '#334155' }}>Numéro de téléphone *</label>
+              <input 
+                type="tel" 
+                value={telephone} 
+                onChange={(e) => setTelephone(e.target.value)} 
+                placeholder="ex: +229 90 00 00 00" 
+                required 
+                style={{ width: '100%', padding: '0.7rem', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '1rem' }} 
+              />
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label>💧 Niveau d'eau *</label>
-              <select value={niveauEau} onChange={(e) => setNiveauEau(e.target.value)} required style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ccc' }}>
-                <option value="">Sélectionner</option>
-                <option value="leger">💧 Chaussée inondée</option>
-                <option value="maisons_touchees">🏠 Maisons touchées</option>
-                <option value="critique">⚠️ Situation critique</option>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem', color: '#334155' }}>Commune de résidence</label>
+              <select 
+                value={commune} 
+                onChange={(e) => setCommune(e.target.value)} 
+                style={{ width: '100%', padding: '0.7rem', borderRadius: '10px', border: '1px solid #cbd5e1', background: 'white', outline: 'none', fontSize: '1rem' }}
+              >
+                <option value="Cotonou">Cotonou</option>
+                <option value="Abomey-Calavi">Abomey-Calavi</option>
+                <option value="Sô-Ava">Sô-Ava</option>
+                <option value="Ouidah">Ouidah</option>
+                <option value="Grand-Popo">Grand-Popo</option>
+                <option value="Malanville">Malanville</option>
               </select>
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label>📝 Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ccc' }} placeholder="Décrivez la situation..." />
+            <div style={{ marginBottom: '2rem' }}>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem', color: '#334155' }}>Mot de passe *</label>
+              <input 
+                type="password" 
+                value={motDePasse} 
+                onChange={(e) => setMotDePasse(e.target.value)} 
+                placeholder="Créer un mot de passe sécurisé" 
+                required 
+                style={{ width: '100%', padding: '0.7rem', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '1rem' }} 
+              />
             </div>
 
-            <button type="submit" disabled={loading} style={{ width: '100%', background: '#dc2626', color: 'white', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-              {loading ? 'Inscription en cours...' : '🚨 SIGNALER & S\'INSCRIRE'}
+            <button 
+              type="submit" 
+              disabled={loading} 
+              style={{ width: '100%', background: '#1e3a8a', color: 'white', padding: '0.85rem', borderRadius: '10px', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', border: 'none', fontSize: '1.05rem', opacity: loading ? 0.7 : 1, transition: 'all 0.3s', boxShadow: '0 4px 12px rgba(30, 58, 138, 0.2)' }}
+            >
+              {loading ? 'Création de votre compte...' : "S'INSCRIRE"}
             </button>
           </form>
 
-          <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.8rem', color: '#64748b' }}>
-            Déjà un compte ? <a href="/connexion">Connectez-vous</a>
+          <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem', color: '#64748b' }}>
+            Vous avez déjà un compte ? <a href="/connexion" style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: '600' }}>Connectez-vous</a>
           </p>
         </div>
       </div>
@@ -156,4 +183,4 @@ const SignalerPublic = () => {
   );
 };
 
-export default SignalerPublic;
+export default Inscription;

@@ -3,6 +3,21 @@ import { useNavigate } from 'react-router-dom';
 
 const ZONES = ['Littoral','Atlantique','Ouémé','Mono','Couffo','Zou','Collines','Borgou','Alibori','Atacora','Donga'];
 
+// Dictionnaire simple pour lier les communes de ta base de données aux départements
+const MAP_COMMUNE_VERS_DEPARTEMENT = {
+  'cotonou': 'Littoral',
+  'abomey-calavi': 'Atlantique', 'calavi': 'Atlantique', 'allada': 'Atlantique', 'ouidah': 'Atlantique',
+  'porto-novo': 'Ouémé', 'porto': 'Ouémé', 'semè-podji': 'Ouémé', 'seme': 'Ouémé',
+  'lokossa': 'Mono', 'grand-popo': 'Mono',
+  'aplahoué': 'Couffo',
+  'abomey': 'Zou', 'bohicon': 'Zou',
+  'dassa': 'Collines', 'savalou': 'Collines',
+  'parakou': 'Borgou',
+  'kandi': 'Alibori',
+  'natitingou': 'Atacora',
+  'djougou': 'Donga'
+};
+
 const MESSAGES_PREDEFINIS = {
   info:      { icon:'ℹ️', label:'Info',      color:'#1a56db', bg:'#eff6ff', border:'#93c5fd', message:'⚠️ Vigilance météo - Fortes pluies attendues dans les prochaines heures. Restez informés via InondoBénin.' },
   vigilance: { icon:'🟡', label:'Vigilance', color:'#ca8a04', bg:'#fefce8', border:'#fde047', message:"🟡 Vigilance orange - Risque modéré d'inondation dans votre zone. Préparez vos documents et chargez vos téléphones." },
@@ -28,8 +43,14 @@ const EnvoiAlertes = () => {
       const res   = await fetch('http://localhost:5000/api/autorite/abonnes-email', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) setAbonnes(await res.json());
-    } catch (e) { console.error(e); }
+      if (res.ok) {
+        const data = await res.json();
+        // CORRECTION : On extrait le tableau depuis "data.abonnes"
+        setAbonnes(data.abonnes || []);
+      }
+    } catch (e) { 
+      console.error("Erreur chargement abonnés:", e); 
+    }
   };
 
   const appliquerMessage = (type) => {
@@ -55,25 +76,28 @@ const EnvoiAlertes = () => {
   };
 
   const cfg = MESSAGES_PREDEFINIS[niveauUrgence];
+
+  // CORRECTION : Attribution de la commune du citoyen au bon département pour l'affichage
   const abonnesParZone = ZONES.reduce((acc, z) => {
-    acc[z] = abonnes.filter(a => a.departement === z).length;
+    acc[z] = abonnes.filter(a => {
+      const communeAbonne = (a.commune || '').toLowerCase().trim();
+      const deptTrouve = MAP_COMMUNE_VERS_DEPARTEMENT[communeAbonne] || 'Littoral'; // Par défaut Littoral si non listé
+      return deptTrouve === z;
+    }).length;
     return acc;
   }, {});
+
   const destinataires = zone === 'Tous' ? abonnes.length : (abonnesParZone[zone] || 0);
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=Sora:wght@400;500&display=swap');
-
         .ea-page { font-family:'Sora',sans-serif; background:#f1f5f9; min-height:100vh; color:#1e293b; }
-
-        /* ── HEADER ── */
         .ea-header {
           background:linear-gradient(135deg,#0a1f44 0%,#1a56db 100%);
           padding:2.5rem 2rem 3rem; position:relative; overflow:hidden; 
-  margin-top: -68px;
-  padding-top: calc(6rem + 68px);
+          margin-top: -68px; padding-top: calc(6rem + 68px);
         }
         .ea-header::before {
           content:''; position:absolute; inset:0;
@@ -107,19 +131,8 @@ const EnvoiAlertes = () => {
         }
         .ea-header p { color:rgba(255,255,255,.7); font-size:.9rem; }
         .ea-wave { position:absolute; bottom:-2px; left:0; width:100%; line-height:0; pointer-events:none; }
-
-        /* ── BODY ── */
         .ea-body { max-width:960px; margin:1.5rem auto 0; padding:0 1.5rem 4rem; position:relative; z-index:2; }
-        .ea-label {
-          font-family:'Outfit',sans-serif; font-weight:700; font-size:.75rem;
-          letter-spacing:.1em; text-transform:uppercase; color:#94a3b8;
-          margin-bottom:.9rem; margin-top:2rem;
-        }
-
-        /* ── GRID PRINCIPAL ── */
         .ea-grid { display:grid; grid-template-columns:1fr 320px; gap:1.5rem; align-items:start; }
-
-        /* ── FORMULAIRE ── */
         .ea-form-card {
           background:#fff; border:1px solid #e2e8f0;
           border-radius:18px; overflow:hidden;
@@ -127,13 +140,10 @@ const EnvoiAlertes = () => {
         }
         .ea-form-header {
           background:linear-gradient(135deg,#0a1f44,#1a56db);
-          padding:1.1rem 1.5rem;
-          display:flex; align-items:center; gap:.6rem;
+          padding:1.1rem 1.5rem; display:flex; align-items:center; gap:.6rem;
         }
         .ea-form-header h2 { font-family:'Outfit',sans-serif; font-weight:800; font-size:1rem; color:#fff; margin:0; }
         .ea-form-body { padding:1.5rem; }
-
-        /* Messages prédéfinis */
         .ea-predef-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.6rem; margin-bottom:1.5rem; }
         .ea-predef-btn {
           display:flex; align-items:center; gap:.5rem;
@@ -144,8 +154,6 @@ const EnvoiAlertes = () => {
         }
         .ea-predef-btn:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.1); }
         .ea-predef-btn.active { box-shadow:0 0 0 3px rgba(0,0,0,.15) inset; }
-
-        /* Champs */
         .ea-field { margin-bottom:1.2rem; }
         .ea-field label {
           display:block; font-family:'Outfit',sans-serif;
@@ -156,25 +164,13 @@ const EnvoiAlertes = () => {
           color:#1e293b; border-radius:12px; outline:none;
           transition:border-color .2s, box-shadow .2s;
         }
-        .ea-select {
-          padding:.65rem 1rem; border:1.5px solid #e2e8f0; background:#f8fafc;
-          cursor:pointer;
-        }
+        .ea-select { padding:.65rem 1rem; border:1.5px solid #e2e8f0; background:#f8fafc; cursor:pointer; }
         .ea-select:focus { border-color:#1a56db; box-shadow:0 0 0 3px rgba(26,86,219,.1); }
-        .ea-textarea {
-          padding:.75rem 1rem; border:1.5px solid; resize:vertical; min-height:130px;
-        }
+        .ea-textarea { padding:.75rem 1rem; border:1.5px solid; resize:vertical; min-height:130px; }
         .ea-textarea:focus { box-shadow:0 0 0 3px rgba(26,86,219,.1); }
-
-        /* Aperçu */
-        .ea-preview {
-          border-radius:12px; padding:1rem 1.2rem;
-          margin-bottom:1.2rem; border:1.5px solid;
-        }
+        .ea-preview { border-radius:12px; padding:1rem 1.2rem; margin-bottom:1.2rem; border:1.5px solid; }
         .ea-preview-title { font-family:'Outfit',sans-serif; font-weight:800; font-size:.85rem; margin-bottom:.4rem; }
         .ea-preview-msg { font-size:.88rem; line-height:1.6; }
-
-        /* Destinataires */
         .ea-dest {
           display:flex; align-items:center; justify-content:space-between;
           background:#f0f7ff; border:1px solid #bfdbfe;
@@ -182,20 +178,14 @@ const EnvoiAlertes = () => {
         }
         .ea-dest-label { font-size:.82rem; color:#475569; }
         .ea-dest-count { font-family:'Outfit',sans-serif; font-weight:900; font-size:1.1rem; color:#1a56db; }
-
-        /* Feedback */
         .ea-success {
           background:#f0fdf4; border:1px solid #86efac; color:#16a34a;
-          border-radius:10px; padding:.7rem 1rem; font-size:.88rem;
-          font-weight:600; text-align:center; margin-bottom:1rem;
+          border-radius:10px; padding:.7rem 1rem; font-size:.88rem; font-weight:600; text-align:center; margin-bottom:1rem;
         }
         .ea-error {
           background:#fef2f2; border:1px solid #fca5a5; color:#dc2626;
-          border-radius:10px; padding:.7rem 1rem; font-size:.88rem;
-          text-align:center; margin-bottom:1rem;
+          border-radius:10px; padding:.7rem 1rem; font-size:.88rem; text-align:center; margin-bottom:1rem;
         }
-
-        /* Bouton envoyer */
         .ea-btn-send {
           width:100%; padding:.9rem 1rem;
           background:linear-gradient(135deg,#dc2626,#ef4444);
@@ -206,32 +196,20 @@ const EnvoiAlertes = () => {
         }
         .ea-btn-send:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 6px 22px rgba(220,38,38,.45); }
         .ea-btn-send:disabled { opacity:.65; cursor:not-allowed; }
-
         .ea-hint { font-size:.72rem; color:#94a3b8; text-align:center; margin-top:.8rem; line-height:1.5; }
-
-        /* ── SIDEBAR STATS ── */
         .ea-sidebar { display:flex; flex-direction:column; gap:1.2rem; }
-
         .ea-stats-card {
-          background:#fff; border:1px solid #e2e8f0;
-          border-radius:18px; overflow:hidden;
-          box-shadow:0 2px 12px rgba(0,0,0,.05);
+          background:#fff; border:1px solid #e2e8f0; border-radius:18px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.05);
         }
-        .ea-stats-header {
-          background:linear-gradient(135deg,#0a1f44,#1a56db);
-          padding:.9rem 1.2rem;
-        }
+        .ea-stats-header { background:linear-gradient(135deg,#0a1f44,#1a56db); padding:.9rem 1.2rem; }
         .ea-stats-header h3 { font-family:'Outfit',sans-serif; font-weight:800; font-size:.95rem; color:#fff; margin:0; }
         .ea-stats-body { padding:1rem; }
-
         .ea-total-row {
           display:flex; align-items:center; justify-content:space-between;
-          background:#f0f7ff; border:1px solid #bfdbfe;
-          border-radius:10px; padding:.7rem 1rem; margin-bottom:.75rem;
+          background:#f0f7ff; border:1px solid #bfdbfe; border-radius:10px; padding:.7rem 1rem; margin-bottom:.75rem;
         }
         .ea-total-label { font-size:.82rem; color:#475569; font-weight:600; }
         .ea-total-num { font-family:'Outfit',sans-serif; font-weight:900; font-size:1.4rem; color:#1a56db; }
-
         .ea-zone-list { display:flex; flex-direction:column; gap:.4rem; }
         .ea-zone-row {
           display:flex; align-items:center; justify-content:space-between;
@@ -241,11 +219,9 @@ const EnvoiAlertes = () => {
         .ea-zone-row:hover { background:#f0f7ff; }
         .ea-zone-name { font-size:.82rem; color:#475569; font-weight:500; }
         .ea-zone-count {
-          font-family:'Outfit',sans-serif; font-weight:700;
-          font-size:.82rem; color:#1a56db;
+          font-family:'Outfit',sans-serif; font-weight:700; font-size:.82rem; color:#1a56db;
           background:#eff6ff; padding:.15rem .55rem; border-radius:99px;
         }
-
         @media (max-width:820px) {
           .ea-grid { grid-template-columns:1fr; }
           .ea-predef-grid { grid-template-columns:repeat(2,1fr); }
@@ -253,15 +229,14 @@ const EnvoiAlertes = () => {
       `}</style>
 
       <div className="ea-page">
-
         {/* ── HEADER ── */}
         <div className="ea-header">
           <div className="ea-header-inner">
             <button className="ea-back" onClick={() => navigate(-1)}>← Retour</button>
             <div style={{ marginTop: "1.5rem" }}>
-            <div className="ea-header-tag">📧 Espace Autorité</div>
-            <h1>Alertes <span>email de masse</span></h1>
-            <p>Envoyez des alertes ciblées aux populations abonnées par département</p>
+              <div className="ea-header-tag">📧 Espace Autorité</div>
+              <h1>Alertes <span>email de masse</span></h1>
+              <p>Envoyez des alertes ciblées aux populations abonnées par département</p>
             </div>
           </div>
           <div className="ea-wave">
@@ -273,7 +248,6 @@ const EnvoiAlertes = () => {
 
         <div className="ea-body">
           <div className="ea-grid">
-
             {/* ── FORMULAIRE ── */}
             <div className="ea-form-card">
               <div className="ea-form-header">
@@ -281,7 +255,6 @@ const EnvoiAlertes = () => {
                 <h2>Composer l'alerte</h2>
               </div>
               <div className="ea-form-body">
-
                 {/* Messages prédéfinis */}
                 <div className="ea-field">
                   <label>📌 Niveau d'alerte</label>
@@ -350,7 +323,6 @@ const EnvoiAlertes = () => {
                 <p className="ea-hint">
                   💡 Les emails sont envoyés avec un template professionnel incluant le niveau d'alerte et la carte des risques.
                 </p>
-
               </div>
             </div>
 

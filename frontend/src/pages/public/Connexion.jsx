@@ -17,6 +17,17 @@ const Connexion = () => {
     try {
       const data = await login(identifiant, motDePasse);
       
+      // 🚨 FIX : On s'assure que les données de session sont bien stockées localement
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
+      
+      // On recrée l'objet user attendu par ton dashboard pour éviter les erreurs "undefined"
+      localStorage.setItem('user', JSON.stringify({
+        id: data.id,
+        nom: data.nom || 'Citoyen',
+        email: data.email || (identifiant.includes('@') ? identifiant : '')
+      }));
+
       // Redirection selon le rôle
       if (data.role === 'CITOYEN') {
         navigate('/citoyen/dashboard');
@@ -38,30 +49,21 @@ const Connexion = () => {
         display: flex;
         align-items: center;
         justify-content: center;
-          min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: #ffffff; /* blanc */
-  padding: 2rem;
+        background: #ffffff;
         padding: 2rem;
       }
 
-     .ib-login-card {
-  width: 100%;
-  max-width: 420px;
-
-  background: linear-gradient(135deg, #0a1f44, #1a56db);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-
-  backdrop-filter: blur(12px);
-  border-radius: 16px;
-  padding: 2.5rem 2rem;
-
-  box-shadow: 0 10px 40px rgba(0,0,0,0.35);
-  color: #fff;
-}
+      .ib-login-card {
+        width: 100%;
+        max-width: 420px;
+        background: linear-gradient(135deg, #0a1f44, #1a56db);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 2.5rem 2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+        color: #fff;
+      }
 
       .ib-login-title {
         text-align: center;
@@ -146,11 +148,6 @@ const Connexion = () => {
         text-decoration: none;
         font-weight: 600;
       }
-
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
     `}</style>
 
     <div className="ib-login-card">
@@ -186,7 +183,7 @@ const Connexion = () => {
 
       <div className="ib-login-footer">
         Vous n’avez pas de compte ?{' '}
-        <a href="/signaler">Inscrivez-vous via un signalement</a>
+        <a href="/inscription">Inscrivez-vous ici</a> {/* Mis à jour vers ta route pure inscription */}
       </div>
     </div>
   </div>

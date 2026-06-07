@@ -18,9 +18,8 @@ import SuiviSinistres from './pages/autorite/SuiviSinistres';
 import GestionSignalements from './pages/autorite/GestionSignalements';
 import EnvoiAlertes from './pages/autorite/EnvoiAlertes';
 import GenerationRapports from './pages/autorite/GenerationRapports';
-import SignalerPublic from './pages/public/SignalerPublic';
+import Inscription from './pages/public/SignalerPublic'; // 🚨 Note : On utilise ton nouveau fichier d'inscription ici
 import ProtectedRoute from './components/ProtectedRoute';
-
 
 function App() {
   return (
@@ -37,7 +36,10 @@ function App() {
         <Route path="/fonctionnement" element={<Fonctionnement />} />
         <Route path="/carte" element={<CartePublique />} />
         <Route path="/connexion" element={<Connexion />} />
-        <Route path="/signaler" element={<SignalerPublic />} />
+        
+        {/* 🚨 URL ajustée pour correspondre à la création de compte pure */}
+        <Route path="/inscription" element={<Inscription />} />
+        <Route path="/signaler" element={<Inscription />} /> {/* Sécurité si un vieux bouton pointe encore ici */}
         
         {/* Routes protégées citoyen */}
         <Route path="/citoyen/dashboard" element={
@@ -53,34 +55,34 @@ function App() {
         } />
         
         <Route path="/citoyen/mes-signalements" element={
-  <ProtectedRoute allowedRoles={['CITOYEN']}>
-    <MesSignalements />
-  </ProtectedRoute>
-} />
+          <ProtectedRoute allowedRoles={['CITOYEN']}>
+            <MesSignalements />
+          </ProtectedRoute>
+        } />
 
-<Route path="/citoyen/alertes" element={
-  <ProtectedRoute allowedRoles={['CITOYEN']}>
-    <AlertesLocalite />
-  </ProtectedRoute>
-} />
+        <Route path="/citoyen/alertes" element={
+          <ProtectedRoute allowedRoles={['CITOYEN']}>
+            <AlertesLocalite />
+          </ProtectedRoute>
+        } />
 
-<Route path="/citoyen/historique" element={
-  <ProtectedRoute allowedRoles={['CITOYEN']}>
-    <Historique />
-  </ProtectedRoute>
-} />
+        <Route path="/citoyen/historique" element={
+          <ProtectedRoute allowedRoles={['CITOYEN']}>
+            <Historique />
+          </ProtectedRoute>
+        } />
 
-<Route path="/citoyen/carte" element={
-  <ProtectedRoute allowedRoles={['CITOYEN']}>
-    <CarteCitoyen />
-  </ProtectedRoute>
-} />
+        <Route path="/citoyen/carte" element={
+          <ProtectedRoute allowedRoles={['CITOYEN']}>
+            <CarteCitoyen />
+          </ProtectedRoute>
+        } />
 
-<Route path="/citoyen/alertes-reelles" element={
-  <ProtectedRoute allowedRoles={['CITOYEN']}>
-    <AlertesReelles />
-  </ProtectedRoute>
-} />
+        <Route path="/citoyen/alertes-reelles" element={
+          <ProtectedRoute allowedRoles={['CITOYEN']}>
+            <AlertesReelles />
+          </ProtectedRoute>
+        } />
 
         {/* Routes protégées autorité */}
         <Route path="/autorite/dashboard" element={
@@ -90,28 +92,28 @@ function App() {
         } />
 
         <Route path="/autorite/sinistres" element={
-  <ProtectedRoute allowedRoles={['AUTORITE']}>
-    <SuiviSinistres />
-  </ProtectedRoute>
-} />
+          <ProtectedRoute allowedRoles={['AUTORITE']}>
+            <SuiviSinistres />
+          </ProtectedRoute>
+        } />
 
-<Route path="/autorite/signalements" element={
-  <ProtectedRoute allowedRoles={['AUTORITE']}>
-    <GestionSignalements />
-  </ProtectedRoute>
-} />
+        <Route path="/autorite/signalements" element={
+          <ProtectedRoute allowedRoles={['AUTORITE']}>
+            <GestionSignalements />
+          </ProtectedRoute>
+        } />
 
-<Route path="/autorite/alertes" element={
-  <ProtectedRoute allowedRoles={['AUTORITE']}>
-    <EnvoiAlertes />
-  </ProtectedRoute>
-} />
+        <Route path="/autorite/alertes" element={
+          <ProtectedRoute allowedRoles={['AUTORITE']}>
+            <EnvoiAlertes />
+          </ProtectedRoute>
+        } />
 
-<Route path="/autorite/rapports" element={
-  <ProtectedRoute allowedRoles={['AUTORITE']}>
-    <GenerationRapports />
-  </ProtectedRoute>
-} />
+        <Route path="/autorite/rapports" element={
+          <ProtectedRoute allowedRoles={['AUTORITE']}>
+            <GenerationRapports />
+          </ProtectedRoute>
+        } />
       </Routes>
       <Footer />
     </BrowserRouter>
