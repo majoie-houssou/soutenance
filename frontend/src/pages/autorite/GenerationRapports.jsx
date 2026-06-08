@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+// 👇 CORRECTION DES IMPORTS POUR LES BUNDLERS MODERNES
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const EMPTY = { dateDebut:'', dateFin:'', zones:'', sinistres:'', ressources:'' };
 
@@ -18,55 +21,146 @@ const GenerationRapports = () => {
     return d > 0 ? d : null;
   };
 
+  // ========== GÉNÉRATION DU PDF EN LOCAL CORRIGÉE ==========
+  const genererPDFLocal = (duree) => {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // 1. En-tête Institutionnel
+    doc.setFillColor(10, 31, 68); // #0a1f44
+    doc.rect(0, 0, 210, 40, 'F');
+
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(255, 255, 255);
+    doc.text("INONDOBÉNIN", 14, 18);
+    
+    doc.setFontSize(11);
+    doc.setFont("Helvetica", "normal");
+    doc.setTextColor(56, 189, 248); // Bleu clair #38bdf8
+    doc.text("PLATEFORME NATIONALE DE GESTION ET DE SUIVI DES INONDATIONS", 14, 26);
+    doc.setTextColor(255, 255, 255);
+    doc.text("RAPPORT OFFICIEL DE FIN DE CRISE", 14, 33);
+
+    // Métadonnées
+    doc.setTextColor(30, 41, 59); // #1e293b
+    doc.setFontSize(10);
+    doc.setFont("Helvetica", "bold");
+    doc.text(`Rapport généré le : ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, 14, 50);
+    
+    // 2. Section : Période & Localisation
+    doc.setFontSize(14);
+    doc.setTextColor(26, 86, 219); // #1a56db
+    doc.text("1. Période et Zones d'Impact", 14, 62);
+    
+    doc.setDrawColor(26, 86, 219);
+    doc.setLineWidth(0.5);
+    doc.line(14, 65, 196, 65);
+
+    // 👇 FIX : Appel de la fonction importée en passant l'instance 'doc'
+    autoTable(doc, {
+      startY: 68,
+      theme: 'plain',
+      styles: { fontSize: 10, cellPadding: 3, font: "Helvetica" },
+      body: [
+        ["Date de début d'alerte :", formData.dateDebut || "Non spécifiée"],
+        ["Date de clôture :", formData.dateFin || "Non spécifiée"],
+        ["Durée totale de la crisis :", `${duree || 0} jour${duree > 1 ? 's' : ''}`],
+        ["Zones & Communes touchées :", formData.zones || "Non spécifiées"]
+      ],
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 50, textColor: [71, 85, 105] },
+        1: { cellWidth: 130 }
+      }
+    });
+
+    // 3. Section : Bilan Humain & Matériel
+    // L'API fonctionnelle met à jour doc.previousAutoTable sans problème
+    const currentY = (doc.previousAutoTable && doc.previousAutoTable.finalY) ? doc.previousAutoTable.finalY + 10 : 110;
+    
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(26, 86, 219);
+    doc.text("2. Bilan Global Consolide", 14, currentY);
+    doc.line(14, currentY + 3, 196, currentY + 3);
+
+    const nbSinistres = formData.sinistres ? parseInt(formData.sinistres, 10) : 0;
+
+    // 👇 FIX : Remplacement du second appel de méthode en autoTable(doc, {...})
+    autoTable(doc, {
+      startY: currentY + 6,
+      theme: 'grid',
+      headStyles: { fillColor: [241, 245, 249], textColor: [10, 31, 68], fontStyle: 'bold' },
+      styles: { fontSize: 10, font: "Helvetica" },
+      head: [["Indicateur de crise", "Données quantitatives / Détails logistiques"]],
+      body: [
+        ["Nombre de sinistrés déclarés", `${nbSinistres.toLocaleString('fr-FR')} personnes physiques`],
+        ["Ressources et moyens mobilisés", formData.ressources || "Aucune ressource spécifique renseignée"]
+      ],
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 60 },
+        1: { cellWidth: 120 }
+      }
+    });
+
+    // 4. Section : Recommandations Post-Crise
+    const nextY = (doc.previousAutoTable && doc.previousAutoTable.finalY) ? doc.previousAutoTable.finalY + 10 : 160;
+    
+    doc.setFontSize(14);
+    doc.setTextColor(26, 86, 219);
+    doc.text("3. Recommandations et Mesures Post-Crise", 14, nextY);
+    doc.line(14, nextY + 3, 196, nextY + 3);
+
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105);
+    
+    const recommandations = [
+      "- Maintenir une vigilance accrue sur les points d'évacuation identifiés.",
+      "- Coordonner le relogement progressif des sinistrés recensés dans la base de données.",
+      "- Procéder au curage préventif des collecteurs d'eau dans les zones à haut risque.",
+      "- Mettre à jour les consignes de sécurité pour les citoyens de la commune."
+    ];
+
+    let recoY = nextY + 10;
+    recommandations.forEach(reco => {
+      doc.text(reco, 14, recoY);
+      recoY += 7;
+    });
+
+    // 5. Zone de Signature officielle
+    doc.setFont("Helvetica", "bold");
+    doc.setTextColor(10, 31, 68);
+    doc.text("Signature de l'Autorité Compétente", 130, recoY + 15);
+    doc.setFont("Helvetica", "italic");
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.text("[ Cachet électronique InondoBénin ]", 128, recoY + 22);
+
+    // Téléchargement automatique
+    doc.save(`rapport_crise_${formData.dateDebut || 'indeterminee'}.pdf`);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.dateDebut || !formData.dateFin) { setError('Veuillez renseigner les dates'); return; }
     if (!formData.zones) { setError('Veuillez renseigner les zones touchées'); return; }
     if (new Date(formData.dateFin) < new Date(formData.dateDebut)) { setError('La date de fin doit être après la date de début'); return; }
 
-    setLoading(true); setError('');
+    const duree = dureeJours();
+    setLoading(true); 
+    setError('');
+    
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/autorite/rapports/generer', {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
-        body: JSON.stringify({
-          dateDebut: formData.dateDebut,
-          dateFin:   formData.dateFin,
-          zones:     formData.zones,
-          sinistres: formData.sinistres || '0',
-          ressources:formData.ressources || 'Non spécifiées',
-        }),
-      });
-
-      if (response.ok) {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/pdf')) {
-          const blob = await response.blob();
-          const url  = window.URL.createObjectURL(blob);
-          const a    = document.createElement('a');
-          a.href     = url;
-          a.download = `rapport_crise_${formData.dateDebut}_${formData.dateFin}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-          setSuccess(true);
-          setTimeout(() => setSuccess(false), 4000);
-        } else {
-          const data = await response.json();
-          if (data.mode === 'simulation') {
-            setSuccess(true);
-            setError('⚠️ Mode simulation : Chrome non trouvé. Le rapport a été enregistré en base sans PDF.');
-            setTimeout(() => setSuccess(false), 5000);
-          }
-        }
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Erreur lors de la génération');
-      }
+      genererPDFLocal(duree);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 4000);
     } catch (err) {
-      setError('Erreur de connexion au serveur');
+      console.error(err);
+      setError('Erreur lors du traitement local du PDF');
     } finally {
       setLoading(false);
     }
@@ -120,10 +214,8 @@ const GenerationRapports = () => {
 
         .gr-body { max-width:860px; margin:1.5rem auto 0; padding:0 1.5rem 4rem; }
 
-        /* ── GRID PRINCIPAL ── */
         .gr-grid { display:grid; grid-template-columns:1fr 280px; gap:1.5rem; align-items:start; }
 
-        /* ── FORMULAIRE ── */
         .gr-form-card {
           background:#fff; border:1px solid #e2e8f0;
           border-radius:18px; overflow:hidden;
@@ -137,7 +229,6 @@ const GenerationRapports = () => {
         .gr-form-header h2 { font-family:'Outfit',sans-serif; font-weight:800; font-size:1rem; color:#fff; margin:0; }
         .gr-form-body { padding:1.5rem; }
 
-        /* Dates côte à côte */
         .gr-dates-row { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; margin-bottom:1.1rem; }
 
         .gr-field { margin-bottom:1.1rem; }
@@ -157,7 +248,6 @@ const GenerationRapports = () => {
         }
         .gr-textarea { resize:vertical; min-height:90px; }
 
-        /* Durée badge */
         .gr-duree {
           display:inline-flex; align-items:center; gap:.4rem;
           background:#eff6ff; color:#1a56db; border:1px solid #bfdbfe;
@@ -165,7 +255,6 @@ const GenerationRapports = () => {
           padding:.3rem .8rem; border-radius:99px; margin-bottom:1.1rem;
         }
 
-        /* Feedback */
         .gr-success {
           background:#f0fdf4; border:1px solid #86efac; color:#16a34a;
           border-radius:10px; padding:.75rem 1rem; font-size:.88rem;
@@ -177,7 +266,6 @@ const GenerationRapports = () => {
           text-align:center; margin-bottom:1rem;
         }
 
-        /* Boutons */
         .gr-btn-row { display:flex; gap:.7rem; margin-top:.5rem; }
         .gr-btn-submit {
           flex:1; padding:.85rem;
@@ -198,7 +286,6 @@ const GenerationRapports = () => {
         }
         .gr-btn-reset:hover { background:#e2e8f0; }
 
-        /* ── SIDEBAR ── */
         .gr-sidebar { display:flex; flex-direction:column; gap:1.2rem; }
 
         .gr-info-card {

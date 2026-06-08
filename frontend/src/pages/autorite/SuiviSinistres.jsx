@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const STATUT_CONFIG = {
-  en_attente:    { bg:'#fffbeb', color:'#d97706', border:'#fcd34d', text:'En attente',    icon:'⏳' },
+  en_attente:     { bg:'#fffbeb', color:'#d97706', border:'#fcd34d', text:'En attente',     icon:'⏳' },
   pris_en_charge:{ bg:'#f0fdf4', color:'#16a34a', border:'#86efac', text:'Pris en charge',icon:'✅' },
-  reloge:        { bg:'#eff6ff', color:'#2563eb', border:'#93c5fd', text:'Relogé',         icon:'🏠' },
+  reloge:         { bg:'#eff6ff', color:'#2563eb', border:'#93c5fd', text:'Relogé',         icon:'🏠' },
 };
 
 const BESOINS_CONFIG = {
@@ -20,7 +20,8 @@ const FILTERS = [
   { key:'reloge',        label:'Relogés',        icon:'🏠' },
 ];
 
-const EMPTY_FORM = { nom_famille:'', nombre_personnes:'', besoins:'', telephone:'', heberge_dans:'', latitude:'', longitude:'' };
+// Mise à jour de l'état initial avec la ville et le quartier à la place du GPS
+const EMPTY_FORM = { nom_famille:'', nombre_personnes:'', besoins:'', telephone:'', heberge_dans:'', ville:'', quartier:'' };
 
 const SuiviSinistres = () => {
   const navigate = useNavigate();
@@ -41,29 +42,59 @@ const SuiviSinistres = () => {
         headers: { Authorization:`Bearer ${token}` },
       });
       const data = await res.json();
-      setSinistres(data);
-      setStats({
-        total:        data.length,
-        enAttente:    data.filter(s => s.statut === 'en_attente').length,
-        prisEnCharge: data.filter(s => s.statut === 'pris_en_charge').length,
-        reloge:       data.filter(s => s.statut === 'reloge').length,
-      });
-    } catch(e) { console.error(e); }
-    finally { setLoading(false); }
+      
+      if (Array.isArray(data)) {
+        setSinistres(data);
+        setStats({
+          total:        data.length,
+          enAttente:    data.filter(s => s.statut === 'en_attente').length,
+          prisEnCharge: data.filter(s => s.statut === 'pris_en_charge').length,
+          reloge:       data.filter(s => s.statut === 'reloge').length,
+        });
+      }
+    } catch(e) { 
+      console.error("Erreur lors de la récupération des sinistres :", e); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await fetch(editingId ? `http://localhost:5000/api/sinistres/${editingId}` : 'http://localhost:5000/api/sinistres', {
-        method: editingId ? 'PUT' : 'POST',
+      
+      // Sécurisation des types de données pour éviter le rejet du Backend (Prisma)
+      const payload = {
+        ...formData,
+        nombre_personnes: parseInt(formData.nombre_personnes, 10) || 0
+      };
+
+      console.log("📤 Envoi des données sinistré au backend :", payload);
+
+      const url = editingId ? `http://localhost:5000/api/sinistres/${editingId}` : 'http://localhost:5000/api/sinistres';
+      const method = editingId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
-      setShowForm(false); setEditingId(null); setFormData(EMPTY_FORM);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erreur lors de l'enregistrement");
+      }
+
+      setShowForm(false); 
+      setEditingId(null); 
+      setFormData(EMPTY_FORM);
+      // Recharger immédiatement la liste à jour
       fetchSinistres();
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+      console.error("Erreur soumission formulaire :", e);
+      alert(`Impossible d'enregistrer : ${e.message}`);
+    }
   };
 
   const updateStatut = async (id, statut) => {
@@ -87,14 +118,6 @@ const SuiviSinistres = () => {
       });
       fetchSinistres();
     } catch(e) { console.error(e); }
-  };
-
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) return alert('Géolocalisation non supportée');
-    navigator.geolocation.getCurrentPosition(
-      pos => setFormData({ ...formData, latitude:pos.coords.latitude.toFixed(6), longitude:pos.coords.longitude.toFixed(6) }),
-      ()  => alert('Activez la géolocalisation')
-    );
   };
 
   const filtered = filterStatut === 'all' ? sinistres : sinistres.filter(s => s.statut === filterStatut);
@@ -122,8 +145,8 @@ const SuiviSinistres = () => {
         .ss-header {
           background:linear-gradient(135deg,#0a1f44 0%,#1a56db 100%);
           padding:2.5rem 2rem 3rem; position:relative; overflow:hidden;
-  margin-top: -68px;
-  padding-top: calc(6rem + 68px);
+          margin-top: -68px;
+          padding-top: calc(6rem + 68px);
         }
         .ss-header::before {
           content:''; position:absolute; inset:0;
@@ -257,7 +280,7 @@ const SuiviSinistres = () => {
           display:flex; align-items:center; justify-content:space-between;
           flex-wrap:wrap; gap:.6rem;
         }
-        .ss-coords { font-size:.72rem; color:#94a3b8; }
+        .ss-coords { font-size:.82rem; color:#64748b; font-weight:600; }
         .ss-action-btns { display:flex; gap:.5rem; flex-wrap:wrap; }
         .ss-btn-action {
           display:inline-flex; align-items:center; gap:.35rem;
@@ -307,18 +330,11 @@ const SuiviSinistres = () => {
           font-family:'Sora',sans-serif; font-size:.9rem; color:#1e293b;
           outline:none; transition:border-color .2s;
           background:#f8fafc;
+          box-sizing: border-box;
         }
         .ss-input:focus, .ss-mselect:focus { border-color:#16a34a; }
 
-        .ss-loc-row { display:flex; gap:.6rem; align-items:center; }
-        .ss-btn-loc {
-          width:40px; height:40px; flex-shrink:0; border-radius:10px;
-          background:linear-gradient(135deg,#1a56db,#06b6d4);
-          color:#fff; border:none; font-size:1rem; cursor:pointer;
-          display:flex; align-items:center; justify-content:center;
-          transition:transform .15s;
-        }
-        .ss-btn-loc:hover { transform:scale(1.05); }
+        .ss-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
 
         .ss-modal-submit {
           width:100%; padding:.8rem; margin-top:.5rem;
@@ -366,8 +382,8 @@ const SuiviSinistres = () => {
           <div className="ss-stats">
             {[
               { icon:'👨‍👩‍👧‍👦', num:stats.total,        color:'#0a1f44', border:'#1a56db', label:'Familles'       },
-              { icon:'👥',       num:totalPersonnes,    color:'#7c3aed', border:'#7c3aed', label:'Personnes'      },
-              { icon:'⏳',       num:stats.enAttente,   color:'#d97706', border:'#f59e0b', label:'En attente'     },
+              { icon:'👥',       num:totalPersonnes,   color:'#7c3aed', border:'#7c3aed', label:'Personnes'      },
+              { icon:'⏳',       num:stats.enAttente,  color:'#d97706', border:'#f59e0b', label:'En attente'     },
               { icon:'✅',       num:stats.prisEnCharge,color:'#16a34a', border:'#16a34a', label:'Pris en charge' },
               { icon:'🏠',       num:stats.reloge,      color:'#2563eb', border:'#2563eb', label:'Relogés'        },
             ].map((s,i) => (
@@ -438,7 +454,7 @@ const SuiviSinistres = () => {
 
                   <div className="ss-card-footer">
                     <span className="ss-coords">
-                      {s.latitude && s.longitude ? `📍 ${parseFloat(s.latitude).toFixed(4)}, ${parseFloat(s.longitude).toFixed(4)}` : '📍 Position non renseignée'}
+                      📍 Loc : {s.quartier && s.ville ? `${s.quartier} (${s.ville})` : s.quartier || s.ville || 'Non renseignée'}
                     </span>
                     {s.statut === 'en_attente' && (
                       <div className="ss-action-btns">
@@ -498,16 +514,18 @@ const SuiviSinistres = () => {
                 <input className="ss-input" type="text" placeholder="Centre d'hébergement ou famille d'accueil"
                   value={formData.heberge_dans} onChange={e => setFormData({...formData, heberge_dans:e.target.value})} />
               </div>
+              
+              {/* Remplacement du GPS par les champs Ville et Quartier en ligne */}
               <div className="ss-field">
-                <label>📍 Localisation GPS</label>
-                <div className="ss-loc-row">
-                  <input className="ss-input" type="text" placeholder="Latitude"
-                    value={formData.latitude} onChange={e => setFormData({...formData, latitude:e.target.value})} />
-                  <input className="ss-input" type="text" placeholder="Longitude"
-                    value={formData.longitude} onChange={e => setFormData({...formData, longitude:e.target.value})} />
-                  <button type="button" className="ss-btn-loc" onClick={getCurrentLocation} title="Ma position">📍</button>
+                <label>📍 Zone géographique</label>
+                <div className="ss-grid-2">
+                  <input className="ss-input" type="text" placeholder="Ville (Ex: Cotonou)" required
+                    value={formData.ville} onChange={e => setFormData({...formData, ville:e.target.value})} />
+                  <input className="ss-input" type="text" placeholder="Quartier (Ex: Agla)" required
+                    value={formData.quartier} onChange={e => setFormData({...formData, quartier:e.target.value})} />
                 </div>
               </div>
+
               <button type="submit" className="ss-modal-submit">
                 {editingId ? '💾 Mettre à jour' : '✅ Enregistrer le sinistré'}
               </button>

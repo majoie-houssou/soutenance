@@ -233,8 +233,15 @@ model sinistres {
   nom_famille         String               @db.VarChar(100)
   nombre_personnes    Int
   besoins             String?
+  
+  // 📍 Les nouveaux champs pour ton formulaire
+  ville               String               @db.VarChar(100)
+  quartier            String               @db.VarChar(100)
+
+  // 🌍 Mis en optionnels (Decimal?) pour ne pas casser d'autres composants s'ils existent
   latitude            Decimal?             @db.Decimal(10, 8)
   longitude           Decimal?             @db.Decimal(11, 8)
+  
   telephone           String?              @db.VarChar(20)
   heberge_dans        String?              @db.VarChar(100)
   statut              String?              @default("en_attente") @db.VarChar(20)

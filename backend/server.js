@@ -15,12 +15,14 @@ app.use(express.json());
 const authRoutes = require('./src/routes/authRoutes');
 const citoyenRoutes = require('./src/routes/citoyenRoutes');
 const autoriteRoutes = require('./src/routes/autoriteRoutes');
+const sinistreRoutes = require('./src/routes/sinistreRoutes'); // 👈 Import des sinistrés
 const { estAutorite } = require('./src/middleware/authMiddleware');
 
 // ========== ROUTES ==========
 app.use('/api/auth', authRoutes);
 app.use('/api/citoyen', citoyenRoutes);
 app.use('/api/autorite', autoriteRoutes);
+app.use('/api/sinistres', sinistreRoutes); // 👈 Montage du routeur sur /api/sinistres
 
 // ========== ROUTES PUBLIQUES ==========
 app.get('/api/health', (req, res) => {
@@ -82,7 +84,6 @@ app.get('/api/public/evacuation-points', async (req, res) => {
 });
 
 // ========== ROUTES POUR L'AUTORITÉ (GESTION DES SIGNALEMENTS) ==========
-// Route de test - Récupérer signalements SANS include
 app.get('/api/signalements-test', estAutorite, async (req, res) => {
   try {
     const signalements = await prisma.signalements.findMany({
@@ -96,16 +97,12 @@ app.get('/api/signalements-test', estAutorite, async (req, res) => {
   }
 });
 
-// Récupérer tous les signalements
 app.get('/api/signalements', estAutorite, async (req, res) => {
   try {
     console.log('📋 Requête /api/signalements reçue');
-    
     const signalements = await prisma.signalements.findMany();
-    
     console.log(`✅ ${signalements.length} signalements récupérés`);
     
-    // Enrichir manuellement chaque signalement
     const result = [];
     for (const sig of signalements) {
       let citoyenData = null;
@@ -132,7 +129,6 @@ app.get('/api/signalements', estAutorite, async (req, res) => {
   }
 });
 
-// Mettre à jour le statut d'un signalement
 app.put('/api/signalements/:id/statut', estAutorite, async (req, res) => {
   try {
     const { id } = req.params;
@@ -148,20 +144,17 @@ app.put('/api/signalements/:id/statut', estAutorite, async (req, res) => {
   }
 });
 
-// Inscription citoyen + signalement en une seule requête
 app.post('/api/public/inscription-signalement', async (req, res) => {
   try {
     const { telephone, motDePasse, nom, latitude, longitude, niveau_eau, description } = req.body;
     const bcrypt = require('bcryptjs');
     const jwt = require('jsonwebtoken');
 
-    // Vérifier si le citoyen existe déjà
     let citoyen = await prisma.citoyens.findUnique({
       where: { telephone }
     });
 
     if (!citoyen) {
-      // Créer le citoyen
       const hashedPassword = await bcrypt.hash(motDePasse || 'citoyen123', 10);
       citoyen = await prisma.citoyens.create({
         data: {
@@ -173,7 +166,6 @@ app.post('/api/public/inscription-signalement', async (req, res) => {
       });
     }
 
-    // Créer le signalement
     const signalement = await prisma.signalements.create({
       data: {
         citoyens: {
@@ -187,7 +179,6 @@ app.post('/api/public/inscription-signalement', async (req, res) => {
       }
     });
 
-    // Générer un token JWT
     const token = jwt.sign(
       { id: citoyen.id, role: 'CITOYEN', nom: citoyen.nom },
       process.env.JWT_SECRET,
@@ -212,7 +203,6 @@ app.get('/api/public/alertes/commune/:commune', async (req, res) => {
   try {
     const { commune } = req.params;
     
-    // Trouver le département de la commune
     const zone = await prisma.zones_risque.findFirst({
       where: { commune: commune }
     });
@@ -223,7 +213,6 @@ app.get('/api/public/alertes/commune/:commune', async (req, res) => {
     
     const departement = zone.departement;
     
-    // Récupérer l'alerte active pour ce département
     const alerte = await prisma.alertes_departement.findFirst({
       where: {
         departement: departement,
@@ -244,7 +233,6 @@ app.get('/api/signalements/commune/:commune', async (req, res) => {
   try {
     const { commune } = req.params;
     
-    // Trouver les zones de la commune
     const zones = await prisma.zones_risque.findMany({
       where: { commune: commune }
     });
